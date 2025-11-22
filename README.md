@@ -35,6 +35,18 @@ For a detailed discussion on the impact of different hyperparameters and the val
 
 Run `python run_script.py --exp_yaml <path to your experiment yaml>`
 
+## Usage - Editing a set of images with the same src and target prompt.
+
+* Upload the set of images to `customData` folder. 
+
+* Create an edits file that specifies: a source prompt and target prompts. The target codes summarize the changes between the source and target prompts and will appear in the output filename. <br>
+See `customData/000c3ab189999a83/edits.yaml` for example.
+
+* Create an experiment file containing the hyperparamaters needed for running FlowEdit, such as `n_max`, `n_min`. This file also includes the path to the dataset directory<br>
+See `SD3_customdata.yaml` for Stable Diffusion 3 usage example. <br>
+
+Run `python run_script_customData.py --exp_yaml SD3_exp.yaml`
+
 ## ComfyUI implementation for different models 
 
 * [FLUX](https://github.com/logtd/ComfyUI-Fluxtapoz)

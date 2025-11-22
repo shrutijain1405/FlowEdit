@@ -9,8 +9,6 @@ import yaml
 import os
 from FlowEdit_utils import FlowEditSD3, FlowEditFLUX
 
-
-
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
@@ -22,15 +20,14 @@ if __name__ == "__main__":
     # set device
     device_number = args.device_number
     device = torch.device(f"cuda:{device_number}" if torch.cuda.is_available() else "cpu")
-
-    # load exp yaml file to dict
+    
     exp_yaml = args.exp_yaml
     with open(exp_yaml) as file:
         exp_configs = yaml.load(file, Loader=yaml.FullLoader)
 
     device = torch.device(f"cuda:{device_number}" if torch.cuda.is_available() else "cpu")
     model_type = exp_configs[0]["model_type"] # currently only one model type per run
-
+    
     if model_type == 'FLUX':
         # pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-schnell", torch_dtype=torch.float16) 
         pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", torch_dtype=torch.float16)
@@ -59,21 +56,20 @@ if __name__ == "__main__":
         np.random.seed(seed)
         torch.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
-        dataset_yaml = exp_dict["dataset_yaml"]
-        with open(dataset_yaml) as file:
-            dataset_configs = yaml.load(file, Loader=yaml.FullLoader)
 
-        # check dataset_configs 
-        for data_dict in dataset_configs:
-            tar_prompts = data_dict["target_prompts"]
-
-        for data_dict in dataset_configs:
-
-            src_prompt = data_dict["source_prompt"]
-            tar_prompts = data_dict["target_prompts"]
-            negative_prompt =  "" # optionally add support for negative prompts (SD3)
-            image_src_path = data_dict["input_img"]
-
+        data_dir = exp_dict["data_dir"]
+        prompts = {}
+        with open(os.path.join(data_dir,"edits.yaml")) as file:
+            prompts = yaml.load(file, Loader=yaml.FullLoader)
+        
+        src_prompt = prompts["source_prompt"]
+        tar_prompts = prompts["target_prompts"]
+        negative_prompt =  "" # optionally add support for negative prompts (SD3)
+        
+        for fname in os.listdir(data_dir):
+            if not(fname.endswith(".png") or fname.endswith(".jpg")):
+                continue
+            image_src_path = os.path.join(data_dir,fname)
             # load image
             image = Image.open(image_src_path)
             # crop image to have both dimensions divisibe by 16 - avoids issues with resizing
@@ -125,12 +121,10 @@ if __name__ == "__main__":
                     image_tar = pipe.vae.decode(x0_tar_denorm, return_dict=False)[0]
                 image_tar = pipe.image_processor.postprocess(image_tar)
 
-                src_prompt_txt = data_dict["input_img"].split("/")[-1].split(".")[0]
-
                 tar_prompt_txt = str(tar_num)
                 
                 # make sure to create the directories before saving
-                save_dir = f"outputs/{exp_name}/{model_type}/src_{src_prompt_txt}/tar_{tar_prompt_txt}"
+                save_dir = f"outputs/{exp_name}/{model_type}/{fname}/tar_{tar_prompt_txt}"
                 os.makedirs(save_dir, exist_ok=True)
                 
                 image_tar[0].save(f"{save_dir}/output_T_steps_{T_steps}_n_avg_{n_avg}_cfg_enc_{src_guidance_scale}_cfg_dec{tar_guidance_scale}_n_min_{n_min}_n_max_{n_max}_seed{seed}.png")
